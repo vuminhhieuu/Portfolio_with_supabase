@@ -10,7 +10,7 @@ const AboutManagement = () => {
     title: '',
     content: '',
   });
-
+  console.log(sections);
   useEffect(() => {
     fetchSections();
   }, []);

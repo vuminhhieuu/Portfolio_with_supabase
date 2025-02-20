@@ -9,7 +9,6 @@ const Login = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const { error } = await signIn(email, password);
-    
     if (error) {
       toast.error('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
     } else {

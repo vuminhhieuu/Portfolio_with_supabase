@@ -35,7 +35,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-b from-black to-gray-800 text-white">
       <div className="max-w-screen-xl mx-auto p-4">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Quản Trị Website</h1>
+          <h1 className="text-3xl font-bold">Admin Page</h1>
           <button
             onClick={handleSignOut}
             className="bg-red-600 px-4 py-2 rounded hover:bg-red-700 transition duration-200"

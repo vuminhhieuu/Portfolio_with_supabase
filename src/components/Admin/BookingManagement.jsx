@@ -2,14 +2,58 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
+import { sendCustomerNotification, notifyAdminNewBooking } from '../../lib/notifications';
 
 const BookingManagement = () => {
   const [bookings, setBookings] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetchBookings();
+    fetchNotifications();
+    
+    const notificationsSubscription = supabase
+      .channel('notifications')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'notifications' 
+      }, handleNewNotification)
+      .subscribe();
+
+    return () => {
+      notificationsSubscription.unsubscribe();
+    };
   }, []);
+
+  const handleNewNotification = async (payload) => {
+    const booking = payload.new;
+    await notifyAdminNewBooking(booking);
+    
+    toast.success('Có đặt lịch mới!', {
+      duration: 5000,
+      icon: '🔔'
+    });
+    fetchNotifications();
+    fetchBookings();
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setNotifications(data);
+      setUnreadCount(data.filter(n => !n.read).length);
+    } catch (error) {
+      toast.error('Không thể tải thông báo');
+    }
+  };
 
   const fetchBookings = async () => {
     try {
@@ -29,12 +73,30 @@ const BookingManagement = () => {
 
   const updateBookingStatus = async (id, status) => {
     try {
+      const booking = bookings.find(b => b.id === id);
       const { error } = await supabase
         .from('bookings')
         .update({ status })
         .eq('id', id);
 
       if (error) throw error;
+
+      // Notify customer about status change
+      const notificationSent = await sendCustomerNotification(booking, status);
+      
+      if (notificationSent) {
+        toast.success('Đã gửi thông báo cho khách hàng');
+      }
+
+      // Create notification for status change
+      await supabase
+        .from('notifications')
+        .insert([{
+          type: `booking_${status}`,
+          content: `${booking.name} - ${booking.service} - ${status}`,
+          booking_id: id
+        }]);
+
       toast.success('Cập nhật trạng thái thành công');
       fetchBookings();
     } catch (error) {
@@ -42,8 +104,60 @@ const BookingManagement = () => {
     }
   };
 
+  const markNotificationAsRead = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', id);
+
+      if (error) throw error;
+      fetchNotifications();
+    } catch (error) {
+      toast.error('Không thể cập nhật thông báo');
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return 'text-yellow-500';
+      case 'confirmed': return 'text-green-500';
+      case 'completed': return 'text-blue-500';
+      case 'cancelled': return 'text-red-500';
+      default: return 'text-gray-500';
+    }
+  };
+
   return (
-    <div>
+    <div className="space-y-6">
+      {/* Notifications Section */}
+      {unreadCount > 0 && (
+        <div className="bg-blue-900 p-4 rounded-lg mb-4">
+          <h3 className="text-xl font-semibold mb-2">
+            Thông Báo Mới ({unreadCount})
+          </h3>
+          <div className="space-y-2">
+            {notifications
+              .filter(n => !n.read)
+              .map(notification => (
+                <div
+                  key={notification.id}
+                  className="bg-blue-800 p-3 rounded flex justify-between items-center"
+                >
+                  <span>{notification.content}</span>
+                  <button
+                    onClick={() => markNotificationAsRead(notification.id)}
+                    className="text-sm bg-blue-700 px-2 py-1 rounded hover:bg-blue-600"
+                  >
+                    Đánh dấu đã đọc
+                  </button>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bookings Section */}
       {loading ? (
         <div className="text-center">Đang tải...</div>
       ) : (
@@ -57,6 +171,9 @@ const BookingManagement = () => {
                 <div>
                   <h3 className="text-xl font-semibold mb-2">{booking.name}</h3>
                   <p className="text-gray-400">SĐT: {booking.phone}</p>
+                  {booking.email && (
+                    <p className="text-gray-400">Email: {booking.email}</p>
+                  )}
                   <p className="text-gray-400">Dịch vụ: {booking.service}</p>
                   <p className="text-gray-400">
                     Ngày: {format(new Date(booking.booking_date), 'dd/MM/yyyy')}
@@ -73,7 +190,7 @@ const BookingManagement = () => {
                     <select
                       value={booking.status}
                       onChange={(e) => updateBookingStatus(booking.id, e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded px-3 py-2"
+                      className={`bg-gray-800 border border-gray-700 rounded px-3 py-2 ${getStatusColor(booking.status)}`}
                     >
                       <option value="pending">Chờ xử lý</option>
                       <option value="confirmed">Đã xác nhận</option>

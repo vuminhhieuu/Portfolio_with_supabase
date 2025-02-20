@@ -8,11 +8,14 @@ const Contact = () => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    email: '',
     service: '',
     message: '',
     bookingDate: '',
     bookingTime: ''
   });
+
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,23 +25,50 @@ const Contact = () => {
     }));
   };
 
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      toast.error('Vui lòng nhập họ tên');
+      return false;
+    }
+    if (!formData.phone.trim()) {
+      toast.error('Vui lòng nhập số điện thoại');
+      return false;
+    }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      toast.error('Email không hợp lệ');
+      return false;
+    }
+    if (!formData.service) {
+      toast.error('Vui lòng chọn dịch vụ');
+      return false;
+    }
+    if (!formData.bookingDate) {
+      toast.error('Vui lòng chọn ngày');
+      return false;
+    }
+    if (!formData.bookingTime) {
+      toast.error('Vui lòng chọn giờ');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.phone || !formData.service || !formData.bookingDate || !formData.bookingTime) {
-      toast.error('Vui lòng điền đầy đủ thông tin bắt buộc');
-      return;
-    }
+    if (!validateForm()) return;
 
+    setSubmitting(true);
     try {
       const { error } = await supabase
         .from('bookings')
         .insert([
           {
-            name: formData.name,
-            phone: formData.phone,
+            name: formData.name.trim(),
+            phone: formData.phone.trim(),
+            email: formData.email.trim(),
             service: formData.service,
-            message: formData.message,
+            message: formData.message.trim(),
             booking_date: formData.bookingDate,
             booking_time: formData.bookingTime
           }
@@ -50,6 +80,7 @@ const Contact = () => {
       setFormData({
         name: '',
         phone: '',
+        email: '',
         service: '',
         message: '',
         bookingDate: '',
@@ -58,6 +89,8 @@ const Contact = () => {
     } catch (error) {
       toast.error('Có lỗi xảy ra. Vui lòng thử lại sau.');
       console.error('Error:', error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -88,7 +121,7 @@ const Contact = () => {
               value={formData.name}
               onChange={handleChange}
               placeholder="Họ và tên *"
-              className="p-3 bg-transparent border-2 rounded-md text-white focus:outline-none text-lg"
+              className="p-3 bg-transparent border-2 rounded-md text-white focus:outline-none focus:border-blue-500 text-lg"
               required
             />
             
@@ -98,15 +131,24 @@ const Contact = () => {
               value={formData.phone}
               onChange={handleChange}
               placeholder="Số điện thoại *"
-              className="my-4 p-3 bg-transparent border-2 rounded-md text-white focus:outline-none text-lg"
+              className="my-4 p-3 bg-transparent border-2 rounded-md text-white focus:outline-none focus:border-blue-500 text-lg"
               required
+            />
+
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Email"
+              className="mb-4 p-3 bg-transparent border-2 rounded-md text-white focus:outline-none focus:border-blue-500 text-lg"
             />
 
             <select
               name="service"
               value={formData.service}
               onChange={handleChange}
-              className="mb-4 p-3 bg-transparent border-2 rounded-md text-white focus:outline-none text-lg"
+              className="mb-4 p-3 bg-transparent border-2 rounded-md text-white focus:outline-none focus:border-blue-500 text-lg"
               required
             >
               <option value="" className="bg-gray-800">Chọn dịch vụ *</option>
@@ -124,7 +166,7 @@ const Contact = () => {
                 value={formData.bookingDate}
                 onChange={handleChange}
                 min={today}
-                className="p-3 bg-transparent border-2 rounded-md text-white focus:outline-none text-lg"
+                className="p-3 bg-transparent border-2 rounded-md text-white focus:outline-none focus:border-blue-500 text-lg"
                 required
               />
               
@@ -135,7 +177,7 @@ const Contact = () => {
                 onChange={handleChange}
                 min="09:00"
                 max="21:00"
-                className="p-3 bg-transparent border-2 rounded-md text-white focus:outline-none text-lg"
+                className="p-3 bg-transparent border-2 rounded-md text-white focus:outline-none focus:border-blue-500 text-lg"
                 required
               />
             </div>
@@ -146,14 +188,17 @@ const Contact = () => {
               onChange={handleChange}
               placeholder="Ghi chú thêm"
               rows="4"
-              className="p-3 bg-transparent border-2 rounded-md text-white focus:outline-none text-lg"
+              className="p-3 bg-transparent border-2 rounded-md text-white focus:outline-none focus:border-blue-500 text-lg"
             ></textarea>
 
             <button
               type="submit"
-              className="text-white bg-gradient-to-b from-cyan-500 to-blue-500 px-8 py-4 my-8 mx-auto flex items-center rounded-md hover:scale-105 duration-300 text-lg font-medium w-full justify-center"
+              disabled={submitting}
+              className={`text-white bg-gradient-to-b from-cyan-500 to-blue-500 px-8 py-4 my-8 mx-auto flex items-center rounded-md hover:scale-105 duration-300 text-lg font-medium w-full justify-center ${
+                submitting ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
             >
-              Gửi Thông Tin
+              {submitting ? 'Đang xử lý...' : 'Gửi Thông Tin'}
             </button>
           </form>
         </div>

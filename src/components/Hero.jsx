@@ -9,7 +9,7 @@ const Hero = () => {
             Thư Giãn & Làm Đẹp
           </h2>
           <p className="text-gray-500 py-4 max-w-md text-center md:text-left text-lg">
-            Chào mừng bạn đến với Serenity Spa, nơi mang đến những trải nghiệm làm đẹp và thư giãn cao cấp. Hãy để chúng tôi chăm sóc và nuông chiều bạn.
+            Chào mừng bạn đến với Hương Anh Spa, nơi mang đến những trải nghiệm làm đẹp và thư giãn cao cấp. Hãy để chúng tôi chăm sóc và nuông chiều bạn.
           </p>
           <div className="flex justify-center md:justify-start">
             <button className="text-white w-full sm:w-auto px-8 py-4 my-2 flex items-center justify-center rounded-md bg-gradient-to-r from-cyan-500 to-blue-500 cursor-pointer text-lg font-medium">
