@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast, Toaster } from 'react-hot-toast';
 import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { notifyAdminNewBooking } from '../lib/notifications';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -12,7 +12,9 @@ const Contact = () => {
     service: '',
     message: '',
     bookingDate: '',
-    bookingTime: ''
+    bookingTime: '',
+    notificationMethod: 'sms',
+    telegramUsername: ''
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -50,6 +52,10 @@ const Contact = () => {
       toast.error('Vui lòng chọn giờ');
       return false;
     }
+    if (formData.notificationMethod === 'telegram' && !formData.telegramUsername) {
+      toast.error('Vui lòng nhập username Telegram');
+      return false;
+    }
     return true;
   };
 
@@ -60,7 +66,8 @@ const Contact = () => {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase
+      // Insert booking into database
+      const { data, error } = await supabase
         .from('bookings')
         .insert([
           {
@@ -70,11 +77,19 @@ const Contact = () => {
             service: formData.service,
             message: formData.message.trim(),
             booking_date: formData.bookingDate,
-            booking_time: formData.bookingTime
+            booking_time: formData.bookingTime,
+            notification_method: formData.notificationMethod,
+            telegram_chat_id: formData.telegramUsername,
+            status: 'pending'
           }
-        ]);
+        ])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Send notification to admin
+      await notifyAdminNewBooking(data);
 
       toast.success('Đặt lịch thành công! Chúng tôi sẽ liên hệ với bạn sớm.');
       setFormData({
@@ -84,7 +99,9 @@ const Contact = () => {
         service: '',
         message: '',
         bookingDate: '',
-        bookingTime: ''
+        bookingTime: '',
+        notificationMethod: 'sms',
+        telegramUsername: ''
       });
     } catch (error) {
       toast.error('Có lỗi xảy ra. Vui lòng thử lại sau.');
@@ -181,6 +198,34 @@ const Contact = () => {
                 required
               />
             </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                Phương thức nhận thông báo *
+              </label>
+              <select
+                name="notificationMethod"
+                value={formData.notificationMethod}
+                onChange={handleChange}
+                className="w-full p-3 bg-transparent border-2 rounded-md text-white focus:outline-none focus:border-blue-500 text-lg"
+                required
+              >
+                <option value="sms" className="bg-gray-800">SMS</option>
+                <option value="telegram" className="bg-gray-800">Telegram</option>
+              </select>
+            </div>
+
+            {formData.notificationMethod === 'telegram' && (
+              <input
+                type="text"
+                name="telegramUsername"
+                value={formData.telegramUsername}
+                onChange={handleChange}
+                placeholder="Username Telegram *"
+                className="mb-4 p-3 bg-transparent border-2 rounded-md text-white focus:outline-none focus:border-blue-500 text-lg"
+                required
+              />
+            )}
 
             <textarea
               name="message"

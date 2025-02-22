@@ -1,62 +1,67 @@
-import TelegramBot from 'node-telegram-bot-api';
-import twilio from 'twilio';
-
+// Telegram API endpoint
+const TELEGRAM_API = 'https://api.telegram.org/bot';
 const TELEGRAM_BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
 const TELEGRAM_ADMIN_CHAT_ID = import.meta.env.VITE_TELEGRAM_ADMIN_CHAT_ID;
 
-const TWILIO_ACCOUNT_SID = import.meta.env.VITE_TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = import.meta.env.VITE_TWILIO_AUTH_TOKEN;
-const TWILIO_PHONE_NUMBER = import.meta.env.VITE_TWILIO_PHONE_NUMBER;
-console.log(TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER);
-
-// Initialize Telegram bot
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: false });
-
-// Initialize Twilio client
-const twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-
-export const sendTelegramNotification = async (message) => {
+export const sendTelegramNotification = async (message, chatId = TELEGRAM_ADMIN_CHAT_ID) => {
   try {
-    await bot.sendMessage(TELEGRAM_ADMIN_CHAT_ID, message);
-    return true;
+    const response = await fetch(`${TELEGRAM_API}${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'HTML'
+      })
+    });
+
+    const data = await response.json();
+    return data.ok;
   } catch (error) {
     console.error('Telegram notification error:', error);
     return false;
   }
 };
 
-export const sendSMSNotification = async (phoneNumber, message) => {
-  try {
-    await twilioClient.messages.create({
-      body: message,
-      from: TWILIO_PHONE_NUMBER,
-      to: phoneNumber
-    });
-    return true;
-  } catch (error) {
-    console.error('SMS notification error:', error);
-    return false;
-  }
-};
-
 export const sendCustomerNotification = async (booking, status) => {
+  if (!booking) return false;
+
   const statusMessages = {
-    confirmed: 'Lịch hẹn của bạn đã được xác nhận',
-    completed: 'Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi',
-    cancelled: 'Lịch hẹn của bạn đã bị hủy'
+    confirmed: '✅ Lịch hẹn của bạn đã được xác nhận',
+    completed: '🎉 Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi',
+    cancelled: '❌ Lịch hẹn của bạn đã bị hủy'
   };
 
-  const message = `${statusMessages[status]}\n\nDịch vụ: ${booking.service}\nNgày: ${booking.booking_date}\nGiờ: ${booking.booking_time}`;
+  const message = `<b>${statusMessages[status]}</b>\n\n` +
+    `<b>Khách hàng:</b> ${booking.name}\n` +
+    `<b>Dịch vụ:</b> ${booking.service}\n` +
+    `<b>Ngày:</b> ${booking.booking_date}\n` +
+    `<b>Giờ:</b> ${booking.booking_time}\n\n` +
+    `Mọi thắc mắc xin liên hệ hotline: 0123.456.789`;
 
   if (booking.notification_method === 'telegram' && booking.telegram_chat_id) {
-    return sendTelegramNotification(message);
-  } else if (booking.phone) {
-    return sendSMSNotification(booking.phone, message);
+    const sent = await sendTelegramNotification(message, booking.telegram_chat_id);
+    return sent;
   }
   return false;
 };
 
 export const notifyAdminNewBooking = async (booking) => {
-  const message = `🔔 Đặt lịch mới!\n\nKhách hàng: ${booking.name}\nSĐT: ${booking.phone}\nDịch vụ: ${booking.service}\nNgày: ${booking.booking_date}\nGiờ: ${booking.booking_time}`;
+  if (!booking) return false;
+
+  const message = 
+    `🔔 <b>Đặt lịch mới!</b>\n\n` +
+    `<b>Khách hàng:</b> ${booking.name}\n` +
+    `<b>SĐT:</b> ${booking.phone}\n` +
+    `<b>Email:</b> ${booking.email || 'Không có'}\n` +
+    `<b>Dịch vụ:</b> ${booking.service}\n` +
+    `<b>Ngày:</b> ${booking.booking_date}\n` +
+    `<b>Giờ:</b> ${booking.booking_time}\n` +
+    `<b>Ghi chú:</b> ${booking.message || 'Không có'}\n` +
+    `<b>Phương thức thông báo:</b> ${booking.notification_method}\n` +
+    (booking.telegram_chat_id ? `<b>Telegram:</b> ${booking.telegram_chat_id}\n` : '');
+
   return sendTelegramNotification(message);
 };

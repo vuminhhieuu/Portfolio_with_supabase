@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
-import { sendCustomerNotification, notifyAdminNewBooking } from '../../lib/notifications';
+import { sendCustomerNotification } from '../../lib/notifications';
+import BookingStats from './BookingStats'
 
 const BookingManagement = () => {
   const [bookings, setBookings] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showStats, setShowStats] = useState(false);
 
   useEffect(() => {
     fetchBookings();
@@ -30,7 +32,6 @@ const BookingManagement = () => {
 
   const handleNewNotification = async (payload) => {
     const booking = payload.new;
-    await notifyAdminNewBooking(booking);
     
     toast.success('Có đặt lịch mới!', {
       duration: 5000,
@@ -60,6 +61,7 @@ const BookingManagement = () => {
       const { data, error } = await supabase
         .from('bookings')
         .select('*')
+        .eq('visible', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -76,7 +78,10 @@ const BookingManagement = () => {
       const booking = bookings.find(b => b.id === id);
       const { error } = await supabase
         .from('bookings')
-        .update({ status })
+        .update({ 
+          status,
+          visible: status !== 'completed'
+        })
         .eq('id', id);
 
       if (error) throw error;
@@ -130,6 +135,18 @@ const BookingManagement = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Quản Lý Đặt Lịch</h2>
+        <button
+          onClick={() => setShowStats(!showStats)}
+          className="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 transition duration-200"
+        >
+          {showStats ? 'Ẩn Thống Kê' : 'Xem Thống Kê'}
+        </button>
+      </div>
+
+      {showStats && <BookingStats />}
+
       {/* Notifications Section */}
       {unreadCount > 0 && (
         <div className="bg-blue-900 p-4 rounded-lg mb-4">
@@ -184,6 +201,9 @@ const BookingManagement = () => {
                   {booking.message && (
                     <p className="text-gray-400">Ghi chú: {booking.message}</p>
                   )}
+                  <p className="text-gray-400">
+                    Thông báo: {booking.notification_method === 'telegram' ? 'Telegram' : 'SMS'}
+                  </p>
                 </div>
                 <div className="flex flex-col justify-between">
                   <div className="flex gap-2 justify-end">
