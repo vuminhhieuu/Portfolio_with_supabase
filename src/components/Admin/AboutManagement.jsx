@@ -10,7 +10,7 @@ const AboutManagement = () => {
     title: '',
     content: '',
   });
-  console.log(sections);
+
   useEffect(() => {
     fetchSections();
   }, []);
@@ -31,13 +31,12 @@ const AboutManagement = () => {
     }
   };
 
-  const handleAddSection = async (e) => {
-    e.preventDefault();
+  const handleAddSection = async (formData) => {
     try {
       const { error } = await supabase
         .from('about_sections')
         .insert([{
-          ...newSection,
+          ...formData,
           order: sections.length
         }]);
 
@@ -51,13 +50,12 @@ const AboutManagement = () => {
     }
   };
 
-  const handleUpdateSection = async (e) => {
-    e.preventDefault();
+  const handleUpdateSection = async (formData) => {
     try {
       const { error } = await supabase
         .from('about_sections')
-        .update(editingSection)
-        .eq('id', editingSection.id);
+        .update(formData)
+        .eq('id', formData.id);
 
       if (error) throw error;
       
@@ -88,13 +86,14 @@ const AboutManagement = () => {
   };
 
   const handleReorder = async (id, direction) => {
+    console.log(id, direction);
     const currentIndex = sections.findIndex(section => section.id === id);
     if (
       (direction === 'up' && currentIndex === 0) ||
       (direction === 'down' && currentIndex === sections.length - 1)
     ) return;
-
     const newSections = [...sections];
+    console.log(newSections)
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     [newSections[currentIndex], newSections[targetIndex]] = [newSections[targetIndex], newSections[currentIndex]];
 
@@ -115,51 +114,70 @@ const AboutManagement = () => {
     }
   };
 
-  const SectionForm = ({ section, onSubmit, buttonText }) => (
-    <form onSubmit={onSubmit} className="space-y-4 bg-gray-900 p-6 rounded-lg mb-6">
-      <div>
-        <label className="block text-sm font-medium mb-2">Tiêu Đề</label>
-        <input
-          type="text"
-          value={section.title}
-          onChange={(e) => section === newSection
-            ? setNewSection({...newSection, title: e.target.value})
-            : setEditingSection({...editingSection, title: e.target.value})}
-          className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-2">Nội Dung</label>
-        <textarea
-          value={section.content}
-          onChange={(e) => section === newSection
-            ? setNewSection({...newSection, content: e.target.value})
-            : setEditingSection({...editingSection, content: e.target.value})}
-          className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
-          rows="4"
-          required
-        />
-      </div>
-      <div className="flex justify-end gap-4">
-        {section === editingSection && (
+  const SectionForm = ({ section, onSubmit, buttonText }) => {
+    const [formData, setFormData] = useState(section);
+
+    useEffect(() => {
+      setFormData(section);
+    }, [section]);
+
+    const handleChange = (e) => {
+      const { name, value } = e.target;
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    };
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      onSubmit(formData);
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4 bg-gray-900 p-6 rounded-lg mb-6">
+        <div>
+          <label className="block text-sm font-medium mb-2">Tiêu Đề</label>
+          <input
+            type="text"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">Nội Dung</label>
+          <textarea
+            name="content"
+            value={formData.content}
+            onChange={handleChange}
+            className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
+            rows="4"
+            required
+          />
+        </div>
+        <div className="flex justify-end gap-4">
+          {section === editingSection && (
+            <button
+              type="button"
+              onClick={() => setEditingSection(null)}
+              className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 transition duration-200"
+            >
+              Hủy
+            </button>
+          )}
           <button
-            type="button"
-            onClick={() => setEditingSection(null)}
-            className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 transition duration-200"
+            type="submit"
+            className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition duration-200"
           >
-            Hủy
+            {buttonText}
           </button>
-        )}
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition duration-200"
-        >
-          {buttonText}
-        </button>
-      </div>
-    </form>
-  );
+        </div>
+      </form>
+    );
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6">

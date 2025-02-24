@@ -32,12 +32,11 @@ const ContentManagement = () => {
     }
   };
 
-  const handleAddService = async (e) => {
-    e.preventDefault();
+  const handleAddService = async (formData) => {
     try {
       const { error } = await supabase
         .from('services')
-        .insert([newService]);
+        .insert([formData]);
 
       if (error) throw error;
       
@@ -49,13 +48,12 @@ const ContentManagement = () => {
     }
   };
 
-  const handleUpdateService = async (e) => {
-    e.preventDefault();
+  const handleUpdateService = async (formData) => {
     try {
       const { error } = await supabase
         .from('services')
-        .update(editingService)
-        .eq('id', editingService.id);
+        .update(formData)
+        .eq('id', formData.id);
 
       if (error) throw error;
       
@@ -85,63 +83,81 @@ const ContentManagement = () => {
     }
   };
 
-  const ServiceForm = ({ service, onSubmit, buttonText }) => (
-    <form onSubmit={onSubmit} className="space-y-4 bg-gray-900 p-6 rounded-lg mb-6">
-      <div>
-        <label className="block text-sm font-medium mb-2">Tên Dịch Vụ</label>
-        <input
-          type="text"
-          value={service.title}
-          onChange={(e) => service === newService 
-            ? setNewService({...newService, title: e.target.value})
-            : setEditingService({...editingService, title: e.target.value})}
-          className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-2">Mô Tả</label>
-        <textarea
-          value={service.description}
-          onChange={(e) => service === newService
-            ? setNewService({...newService, description: e.target.value})
-            : setEditingService({...editingService, description: e.target.value})}
-          className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
-          rows="3"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-2">Giá</label>
-        <input
-          type="text"
-          value={service.price}
-          onChange={(e) => service === newService
-            ? setNewService({...newService, price: e.target.value})
-            : setEditingService({...editingService, price: e.target.value})}
-          className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
-          required
-        />
-      </div>
-      <div className="flex justify-end gap-4">
-        {service === editingService && (
+  const ServiceForm = ({ service, onSubmit, buttonText }) => {
+    const [formData, setFormData] = useState(service);
+
+    useEffect(() => {
+      setFormData(service);
+    }, [service]);
+
+    const handleChange = (e) => {
+      const { name, value } = e.target;
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    };
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      onSubmit(formData);
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4 bg-gray-900 p-6 rounded-lg mb-6">
+        <div>
+          <label className="block text-sm font-medium mb-2">Tên Dịch Vụ</label>
+          <input
+            type="text"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">Mô Tả</label>
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
+            rows="3"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">Giá</label>
+          <input
+            type="text"
+            name="price"
+            value={formData.price}
+            onChange={handleChange}
+            className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
+            required
+          />
+        </div>
+        <div className="flex justify-end gap-4">
+          {service === editingService && (
+            <button
+              type="button"
+              onClick={() => setEditingService(null)}
+              className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 transition duration-200"
+            >
+              Hủy
+            </button>
+          )}
           <button
-            type="button"
-            onClick={() => setEditingService(null)}
-            className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 transition duration-200"
+            type="submit"
+            className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition duration-200"
           >
-            Hủy
+            {buttonText}
           </button>
-        )}
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition duration-200"
-        >
-          {buttonText}
-        </button>
-      </div>
-    </form>
-  );
+        </div>
+      </form>
+    );
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6">

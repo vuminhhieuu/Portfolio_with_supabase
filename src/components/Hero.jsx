@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-scroll';
 
 const Hero = () => {
   return (
@@ -13,7 +14,9 @@ const Hero = () => {
           </p>
           <div className="flex justify-center md:justify-start">
             <button className="text-white w-full sm:w-auto px-8 py-4 my-2 flex items-center justify-center rounded-md bg-gradient-to-r from-cyan-500 to-blue-500 cursor-pointer text-lg font-medium">
-              Đặt Lịch Ngay
+              <Link to="contact" smooth={true} duration={500}>
+                Đặt Lịch ngay
+              </Link>
             </button>
           </div>
         </div>

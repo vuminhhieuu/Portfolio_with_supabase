@@ -9,7 +9,7 @@ const GalleryManagement = () => {
     title: '',
     image_url: '',
   });
-
+  const [editingImage, setEditingImage] = useState(null);
   useEffect(() => {
     fetchImages();
   }, []);
@@ -30,13 +30,12 @@ const GalleryManagement = () => {
     }
   };
 
-  const handleAddImage = async (e) => {
-    e.preventDefault();
+  const handleAddImage = async (formData) => {
     try {
       const { error } = await supabase
         .from('gallery_images')
         .insert([{
-          ...newImage,
+          ...formData,
           order: images.length
         }]);
 
@@ -49,6 +48,24 @@ const GalleryManagement = () => {
       toast.error('Không thể thêm hình ảnh');
     }
   };
+
+  const handleUpdateImage = async (formData) => {
+    try {
+      const { error } = await supabase
+        .from('gallery_images')
+       .update({...formData })
+       .eq('id', formData.id);
+      
+      if (error) throw error;
+      
+      toast.success('Cập nhật hình ảnh thành công');
+      setEditingImage(null);
+      fetchImages();
+    } catch (error) {
+      toast.error('Không thể cập nhật hình ảnh');
+    }
+  }
+
 
   const handleDeleteImage = async (id) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa hình ảnh này?')) return;
@@ -96,57 +113,104 @@ const GalleryManagement = () => {
     }
   };
 
-  return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h2 className="text-2xl font-bold mb-6">Quản Lý Hình Ảnh</h2>
-      
-      <form onSubmit={handleAddImage} className="space-y-4 bg-gray-900 p-6 rounded-lg mb-6">
+  const ImageForm = ({ image, onSubmit, buttonText }) => {
+    const [formData, setFormData] = useState(image);
+    useEffect(() => {
+      setFormData(image);
+    }, [image]);
+
+    const handleChange = (e) => {
+      const { name, value } = e.target;
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    };
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      onSubmit(formData);
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4 bg-gray-900 p-6 rounded-lg mb-6">
         <div>
           <label className="block text-sm font-medium mb-2">Tiêu Đề</label>
           <input
             type="text"
-            value={newImage.title}
-            onChange={(e) => setNewImage({...newImage, title: e.target.value})}
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
             className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2">URL Hình Ảnh</label>
+          <label className="block text-sm font-medium mb-2">URL hình ảnh</label>
           <input
-            type="url"
-            value={newImage.image_url}
-            onChange={(e) => setNewImage({...newImage, image_url: e.target.value})}
+            name="image_url"
+            type='url'
+            value={formData.image_url}
+            onChange={handleChange}
             className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500"
+            rows="4"
             required
           />
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-4">
+          {images === editingImage && (
+            <button
+              type="button"
+              onClick={() => setEditingImage(null)}
+              className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 transition duration-200"
+            >
+              Hủy
+            </button>
+          )}
           <button
             type="submit"
             className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition duration-200"
           >
-            Thêm Hình Ảnh
+            {buttonText}
           </button>
         </div>
       </form>
+    );
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      <h2 className="text-2xl font-bold mb-6">Quản Lý Hình Ảnh</h2>
+
+      <ImageForm
+        image={newImage}
+        onSubmit={handleAddImage}
+        buttonText="Thêm hình ảnh"
+      />
 
       {loading ? (
         <div className="text-center">Đang tải...</div>
       ) : (
-        <div className="grid gap-4">
+        <div className="space-y-4">
           {images.map((image, index) => (
             <div key={image.id} className="bg-gray-900 rounded-lg p-6">
-              <div className="grid md:grid-cols-2 gap-4 items-center">
-                <div>
-                  <img
-                    src={image.image_url}
-                    alt={image.title}
-                    className="w-full h-48 object-cover rounded"
-                  />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold mb-4">{image.title}</h3>
+              {editingImage?.id === image.id ? (
+                <ImageForm
+                  image={editingImage}
+                  onSubmit={handleUpdateImage}
+                  buttonText="Cập Nhật"
+                />
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4 items-center">
+                  <div>
+                    <img 
+                      src={image.image_url} 
+                      alt={image.title} 
+                      className="w-full h-48 object-cover rounded"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-4">{image.title}</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleReorder(image.id, 'up')}
@@ -167,14 +231,21 @@ const GalleryManagement = () => {
                       ↓
                     </button>
                     <button
+                      onClick={() => setEditingImage(image)}
+                      className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition duration-200 ml-auto"
+                    >
+                      Sửa
+                    </button>
+                    <button
                       onClick={() => handleDeleteImage(image.id)}
-                      className="px-4 py-2 bg-red-600 rounded hover:bg-red-700 transition duration-200 ml-auto"
+                      className="px-4 py-2 bg-red-600 rounded hover:bg-red-700 transition duration-200"
                     >
                       Xóa
                     </button>
                   </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ))}
         </div>
