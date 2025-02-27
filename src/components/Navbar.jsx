@@ -16,7 +16,12 @@ const Navbar = () => {
   return (
     <nav className="flex justify-between items-center w-full h-20 px-4 text-white bg-black fixed z-50">
       <div>
-        <h1 className="text-3xl font-signature ml-2">HuongAnh Spa</h1>
+        <a href="/home">
+          <img src="/favicon.svg" alt="Logo Huong Anh Spa" className="h-20 w-20" />
+        </a>
+        {/* <Link to="/home" smooth={true} duration={500}>
+          <img src="/favicon.svg" alt="Logo Huong Anh Spa" className="h-10 w-10" />
+        </Link> */}
       </div>
 
       <ul className="hidden md:flex">
